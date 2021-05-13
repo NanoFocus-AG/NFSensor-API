@@ -1,0 +1,9 @@
+graph TD
+Client --> NFSensorAPI.dll
+    NFSensorAPI.dll --> NFDevicBase.dll
+    NFSensorAPI.dll --> NFBaseTypes.dll
+    NFSensorAPI.dll --> NFEval.dll
+    NFSensorAPI.dll --> NFEvalLogger.dll
+    NFSensorAPI.dll --> Plugins([Devices Folder]) 
+    Plugins --> NFHicosSensor.dll
+    Plugins --> NFMsprint128Sensor.dll

@@ -1,0 +1,30 @@
+stateDiagram-v2
+   
+    [*] --> Unknown
+    Unknown --> Connecting 
+    Connecting --> Connected
+	Connected --> Unknown
+	Connected --> Initializing
+    Initializing --> Idle
+	Idle --> Connected
+    
+    State Idle{
+        IdleAborted --> IdleReady
+        IdleWithErrors --> IdleReady
+    }
+    State Live
+
+    Idle --> Live
+    Live --> Idle
+       Idle --> Acquisition
+       State Acquisition{
+          [*] --> PreparingAcquisition
+          PreparingAcquisition --> AcquiringData
+          AcquiringData --> PostProcessingAcquisition
+         }
+         PostProcessingAcquisition -->Idle
+
+     Error --> Unknown
+     %%Connecting --> Error
+     %%Connected --> Error
+     %%Initializing --> Error
