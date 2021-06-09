@@ -32,7 +32,7 @@ All sensor specific implementation are sourced out to a specific plugin dll whic
 
 ### Statemachine
 
-The NFSensor SDK is based on a finite state machine implementation. See Fig. "State Machine Architecture" for an overview. At any given point in time the system is in a requested state or state transition and the state can be queried at any given point in time.
+The NFSensor API is based on a finite state machine implementation. See Fig. "State Machine Architecture" for an overview. At any given point in time the system is in a requested state or state transition and the state can be queried at any given point in time.
 
 ![](NFSensorStateMachine.svg)
 
@@ -62,7 +62,7 @@ typedef enum
   ```
 Table 1: Overview StateID
 
-It is advisable to check for current state with the interface function
+The current state can be checked with the interface function
 
 _NFSensor_API int NFSensor_GetStateID(SensorHandle hSensor, StateID * eStateID)_
 
@@ -79,7 +79,7 @@ and evaluate the null terminated ASCII string for further error tracing and debu
 
 ##  Interface functions 
 
-### __General Functions__
+### __Creational Functions__
 
 ---
 >### NFSensor_API int NFSensor_Create(SensorModel eSensorModel, SensorHandle *hSensor);
@@ -122,6 +122,8 @@ Returns:
 
 Example usage:
 
+
+### __State Transition Functions__
 
 ---
 >###  NFSensor_API int NFSensor_Connect(SensorHandle hSensor);
@@ -207,6 +209,96 @@ Returns:
 Example usage:
 
 
+### __State synchronization  Functions__
+
+To ensure correct program  flow often it is necessary and recommended to  check and syncronize for  states. NFSensor API  provides  different function calls to query 
+states.
+
+---
+>### NFSensor_API int NFSensor_GetStateID(SensorHandle hSensor, StateID * eStateID);
+---
+
+Purpose:
+* yields current eStateID as defined  in corresponding enum StateID
+* 
+ 
+
+Parameters: 
+
+* hSensor  [in]: current sensor handle
+* eStateID [out]: state Id  to  query for
+ 
+
+Returns:
+
+* Zero on success
+* on non zero success, the last error can be obtained with _NFSensor_GetLastError_
+
+Example usage:
+
+
+---
+>### NFSensor_API int NFSensor_IsInState(SensorHandle hSensor, StateID eStateID, bool * bInStateID);
+---
+Purpose:
+*  
+ 
+
+Parameters: 
+
+* hSensor  [in]: current sensor handle
+* eStateID [in]: state Id  to  query for
+* bInStateID [out]:  result  of query
+
+Returns:
+
+* Zero on success
+* on non zero success, the last error can be obtained with _NFSensor_GetLastError_
+
+Example usage:
+
+---
+>### NFSensor_API int NFSensor_IsAcquiring(SensorHandle hSensor, bool * bAcquiring);
+---
+
+Purpose:
+*  convenience function to test  for the outer  state Acquisition 
+
+Parameters: 
+
+* hSensor  [in]: current sensor handle
+* bAcquiring [out]:  result  of query
+
+
+Returns:
+
+* Zero on success
+* on non zero success, the last error can be obtained with _NFSensor_GetLastError_
+
+Example usage:
+
+---
+>###  NFSensor_API int NFSensor_IsLive(SensorHandle hSensor, bool * bLive);
+---
+
+Purpose:
+* convenience function to test for outer state Live 
+ 
+
+Parameters: 
+
+* hSensor  [in]: current sensor handle
+* bLive [out]:  result  of query
+
+
+Returns:
+
+* Zero on success
+* on non zero success, the last error can be obtained with _NFSensor_GetLastError_
+
+Example usage:
+
+
 ### __Acquisition Functions__ 
 
 ---
@@ -261,7 +353,7 @@ Purpose:
 Parameters:
 
 * hSensor  [in]: current sensor handle
-* uint64_t NumberOfBuffers [in]: number of data points (buffers) to acquire
+* NumberOfBuffers [in]: number of data points (buffers) to acquire
 
 Returns:
 
@@ -277,7 +369,7 @@ Example usage:
 Purpose:
 * triggers state transition from Acquisition to Idle
 * with this function user can cancel current acquisition phase
-* function returns immediately, due to internal processing a synchronisation of sensor state is advisable before program flow execution 
+* function returns immediately, due to internal processing a synchronisation of sensor state is advisable before program flow continuation 
 
 Parameters:
 
@@ -310,23 +402,6 @@ Returns:
 
 Example usage:
 
-```
-StateID id(Unkown);
-int rc = 0;
-
-rc = NFSensor_StartAcquisition(hSensor, 10000));
-
-rc = NFSensor_GetStateID(hSensor, &id));
-
-rc =  NFSensor_Abort(hSensor));
-     
-while (StateID::AcquiringData == id)
-{
-   REQUIRE(0 == NFSensor_GetStateID(hSensor, &id));
-   // Sleep(10);
-}
-```
-
 
 ---
 >###   NFSensor_API int NFSensor_Acknowledge(SensorHandle hSensor);
@@ -347,6 +422,196 @@ Returns:
 Example usage:
 
 
+### __DataHandling / Callback Functions__
+
+* The begin and/or end  of Live state or Acquisition state  is signaled  by calling a user provided callback function. In this case no  data is associated  with the callbacks. 
+* while the sensor is in Live or Acquire state the client is notified about  new  data by calling a  user provided  callback function.
+
+
+### Callback Signatures
+
+```
+  typedef void(*NFLiveDataCallback)(TransferData*);
+  typedef void(*NFAcqDataCallback)(TransferData*);
+
+  typedef void(*NFLiveStartCallback)(void);
+  typedef void(*NFLiveDoneCallback)(void);
+  typedef void(*NFAcqStartCallback)(void);
+  typedef void(*NFAcqDoneCallback)(void);
+```
+ 
+###  Callback Parameters
+
+In case of NFLiveDataCallback and NFAcqDataCallback the associated data  is returned to the caller by parameter struct TransferData:
+
+ >### typedef struct TransferData_t
+
+
+``` 
+typedef struct TransferData_t
+ {
+    int64_t NX;
+    int64_t NY;
+    int64_t NumberOfBuffers;  
+    int64_t numberOfLayers;  
+    float* data_height;
+    uint16_t maxIntensity;   
+    uint16_t* data_intens;
+    float* data_height2;
+    uint16_t* data_intens2;
+
+} TransferData;
+``` 
+
+Purpose: gives the  client access to the data, associated  with live or acquisition state. 
+
+
+Fields:
+
+* NX  [out]]: number of data points in X Dimension
+* NY  [out]: number of data points along sensor line  , e.g.  NY = 128 for C3 sensor type, NY = 256  for C3x sensor type  often this is refered as number of sensor channels
+* NumberOfBuffers  [out]: number of atomic data entities, in case of line scan sensors, the number of scan lines recently acquired.
+  
+  In live mode this value is always  NumberOfBuffers = 1.  
+  
+  In acquisiton state NumberOfBuffer is equal to    NumberOfBuffers   requested  with  a previously call to  NFSensor_StartAcquistion
+
+* numberOfLayers  [out]: some sensors are capable of providing two or more layers of data, e.g. when measuring transparent layers ( upper height, lower height)    
+* data_height  [out]:  pointer to  height data    
+* maxIntensity  [out]: scale of intensity data, differente sensors have different A/D convertes. Usually this  value gives   maxIntensity = 255 for 8 Bit resolution or  maxIntensity = 4095 for 12 Bit resolution     
+* data_intens  [out]:  pointer to intensity data
+* data_height2  [out]: pointer to height data of layer 2 (in case of double layer operation)
+* data_intens2  [out]: pointer to intensity data of layer 2 (in case of  double layer operation )
+
+Remarks:
+* for point sensors  NX = NY =1  holds 
+* for line sensors   NX =1 ,  NY > NX  holds
+* for area sensors   NX > 1  , NY > 1  holds
+* the memory is allocated  by the library and the data  will overwritten  on each callback.
+* care should be taken to copy the data into client space for  further processing if desired
+
+
+Memory Layout:
+
+The datalayout is ordered sequential in memory:
+
+1. Line Sensor (C3x, C3)
+ 
+ (B0)( (Y0 ... NY-1) ) (B1)( (Y0 ... NY-1) ) ... (NumberOfBuffers-1)((Y0 ... NY-1))
+  
+2. Point Sensor
+   
+ (B0)( (Y0) ) (B1)( (Y0) ) ... (NumberOfBuffers-1)((Y0))
+
+### 1. Live State Callbacks
+
+>### NFSensor_API int NFSensor_SetLiveStartCallback(SensorHandle hSensor, NFLiveStartCallback cb);
+
+Purpose:
+*  register callback to implementation
+*  callback function cb is called  when entering live state
+
+Parameters:
+
+* hSensor  [in]: current sensor handle
+* cb  [in]: user defined callback function      
+   
+Returns:
+
+* Zero on success
+ 
+Example usage:
+
+ >### NFSensor_API int NFSensor_SetLiveDataReadyCallback(SensorHandle hSensor, NFLiveDataCallback cb); 
+
+Purpose:
+*  register callback to implementation 
+*  callback function cb is called periodically on arrival of new data if sensor is in Live State
+ 
+
+Parameters:
+
+* hSensor  [in]: current sensor handle
+* cb  [in]: user defined callback function     
+Returns:
+
+* Zero on success
+ 
+Example usage:
+
+ >### NFSensor_API int NFSensor_SetLiveDoneCallback(SensorHandle hSensor, NFLiveDoneCallback cb);
+
+Purpose:
+*  register callback to implementation
+*  callback function cb is called  when leaving live state
+ 
+
+Parameters:
+
+* hSensor  [in]: current sensor handle
+* cb  [in]: user defined callback function     
+Returns:
+
+* Zero on success
+ 
+Example usage:
+
+ ### 2. Acquire State Callback
+
+ >### NFSensor_API int NFSensor_SetAcquisitionStartCallback(SensorHandle hSensor, NFAcqStartCallback cb);
+ 
+ Purpose:
+*  register callback to implementation
+*  callback function cb is called  when entering acq state
+
+Parameters:
+
+* hSensor  [in]: current sensor handle
+* cb  [in]: user defined callback function     
+Returns:
+
+* Zero on success
+ 
+Example usage:
+
+ >### NFSensor_API int NFSensor_SetAcquisitionDataReadyCallback(SensorHandle hSensor, NFAcqDataCallback cb);
+
+Purpose:
+*  register callback to implementation
+  
+
+Parameters:
+
+* hSensor  [in]: current sensor handle
+* cb  [in]: user defined callback function   
+ 
+Returns:
+
+* Zero on success
+ 
+Example usage:
+
+ >### NFSensor_API int NFSensor_SetAcquisitionDoneCallback(SensorHandle hSensor, NFAcqDoneCallback cb);
+
+Purpose:
+* register callback to implementation
+* callback function cb is called  when leaving acq state
+
+Parameters:
+
+* hSensor  [in]: current sensor handle
+* cb  [in]: user defined callback function   
+
+
+Returns:
+
+* Zero on success
+ 
+Example usage:  
+
+
+
+
 ### __Configuration Functions__
 
 To reflect on  each sensor specific parameters the NFSensor API provides a generic like interface to get and set parameters. It is organized by key - value semantic and the ParamType data structure allows to pass floating point values, integer values or string values by specifiying the apropiate data type.
@@ -364,7 +629,7 @@ Purpose:
 Parameters:
 
 * hSensor  [in]: current sensor handle
-* const char * strParamName [in]: parameter name
+* const char * strParamName [in]: parameter name , zero terminated ASCII string 
 * ParamType * sParamValue [out]: parameter value
 
 Returns:
@@ -405,7 +670,7 @@ Purpose:
 Parameters: 
 
 * hSensor  [in]: current sensor handle
-* const char * strParamName [in]: parameter name
+* const char * strParamName [in]: parameter name,  zero terminated  ASCII string
 * ParamType sParamValue [in]: parameter value
 
 Returns:
@@ -433,9 +698,19 @@ if (rc == 0)
 rc = NFSensor_Destroy(hSensor);
 ```
 
----
-
+ 
 
 ## Sensor Types
 
 ### C3x Sensor
+The following parameters are accessible for  C3x Sensor. For details refer to the technical handbook for C3x Sensor. 
+
+
+|Parmeter|Description|Access mode|Remarks|
+|-|-|-|-|
+|NFC3xSensor_PixelSizeX||||
+|NFC3xSensor_PixelSizeY||| |
+
+
+
+ 
