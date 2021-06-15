@@ -40,7 +40,7 @@ Fig: State Machine Architecture
 
 The design implies that called forbidden state transition could not be possible. For example, it is not adviseable to go from state NFSensor_Acquisition to NFSensor_Live which would result in unpredicted data. Therefore the internal design prohibits such transitions and will return an error to the caller.
 All states are mapped to  state ID as shown in Table 1.
-```
+```cpp
 typedef enum
   {
     Unkown = 0,
@@ -383,26 +383,7 @@ Returns:
 Example usage:
 
 
----
->###  NFSensor_API int NFSensor_Abort(SensorHandle hSensor);
----
-
-Purpose:
-
- *  user triggered stop of Live state or Acqusition state
- *  call is non blocking, a manual state synchronisation might be neccessary
-
-Parameters: 
-
-* hSensor  [in]: current sensor handle
-
-Returns:
-
-* Zero on success
-
-Example usage:
-
-
+ 
 ---
 >###   NFSensor_API int NFSensor_Acknowledge(SensorHandle hSensor);
 ---
@@ -430,7 +411,7 @@ Example usage:
 
 ### Callback Signatures
 
-```
+```cpp
   typedef void(*NFLiveDataCallback)(TransferData*);
   typedef void(*NFAcqDataCallback)(TransferData*);
 
@@ -447,7 +428,7 @@ In case of NFLiveDataCallback and NFAcqDataCallback the associated data  is retu
  >### typedef struct TransferData_t
 
 
-``` 
+```cpp 
 typedef struct TransferData_t
  {
     int64_t NX;
@@ -505,7 +486,9 @@ The datalayout is ordered sequential in memory:
 
 ### 1. Live State Callbacks
 
+---
 >### NFSensor_API int NFSensor_SetLiveStartCallback(SensorHandle hSensor, NFLiveStartCallback cb);
+---
 
 Purpose:
 *  register callback to implementation
@@ -522,7 +505,9 @@ Returns:
  
 Example usage:
 
+---
  >### NFSensor_API int NFSensor_SetLiveDataReadyCallback(SensorHandle hSensor, NFLiveDataCallback cb); 
+---
 
 Purpose:
 *  register callback to implementation 
@@ -539,7 +524,9 @@ Returns:
  
 Example usage:
 
+---
  >### NFSensor_API int NFSensor_SetLiveDoneCallback(SensorHandle hSensor, NFLiveDoneCallback cb);
+---
 
 Purpose:
 *  register callback to implementation
@@ -558,8 +545,10 @@ Example usage:
 
  ### 2. Acquire State Callback
 
+---
  >### NFSensor_API int NFSensor_SetAcquisitionStartCallback(SensorHandle hSensor, NFAcqStartCallback cb);
- 
+ ---
+
  Purpose:
 *  register callback to implementation
 *  callback function cb is called  when entering acq state
@@ -574,7 +563,9 @@ Returns:
  
 Example usage:
 
+---
  >### NFSensor_API int NFSensor_SetAcquisitionDataReadyCallback(SensorHandle hSensor, NFAcqDataCallback cb);
+---
 
 Purpose:
 *  register callback to implementation
@@ -591,7 +582,9 @@ Returns:
  
 Example usage:
 
+---
  >### NFSensor_API int NFSensor_SetAcquisitionDoneCallback(SensorHandle hSensor, NFAcqDoneCallback cb);
+---
 
 Purpose:
 * register callback to implementation
@@ -639,7 +632,7 @@ Returns:
 
 Example usage:
 
-```
+```cpp
 #include "NFScanSensorSimulParameter.h"
 
 SensorHandle hSensor = 0;
@@ -680,7 +673,7 @@ Returns:
 
 Example usage:
 
-```
+```cpp
 #include "NFScanSensorSimulParameter.h"
 
 SensorHandle hSensor = 0;
