@@ -653,7 +653,7 @@ rc = NFSensor_Destroy(hSensor);
 
 ---
 
->### NFSensor_API int NFSensor_SetParameter(SensorHandle hSensor, const char * >strParamName, ParamType sParamValue);
+>### NFSensor_API int NFSensor_SetParameter(SensorHandle hSensor, const char *strParamName, ParamType sParamValue);
 
 ---
 
@@ -689,6 +689,7 @@ if (rc == 0)
 }
 
 rc = NFSensor_Destroy(hSensor);
+
 ```
 
  
@@ -701,9 +702,287 @@ The following parameters are accessible for  C3x Sensor. For details refer to th
 
 |Parmeter|Description|Access mode|Remarks|
 |-|-|-|-|
-|NFC3xSensor_PixelSizeX||||
-|NFC3xSensor_PixelSizeY||| |
+|PixelSizeX|Size of pixel in x direction as double value in µm.  |read||
+|PixelSizeY|Size of pixel in y direction as double value in µm.  |read| |
+|TriggerMode|SensorTriggerMode as enum (int) value. (Default: TRIGGER_MODE_SOFTWARE).| r/w||
+
+### C3 Sensor
+ tbd.
+
+## Example Code
+
+```cpp
+// sample1.cpp : console example application for controlling NanoFocus AG scan sensors via the NFSensorAPI
+
+#include "../NFSensorAPI.h"
+#include "../NFScanSensorSimulParameter.h"
+#include "../NFC3xSensorParameter.h"
+#include "../NFC3xSensorCommand.h"
+#include <stdio.h> // printf()
+#include <windows.h> // Sleep()
+
+SensorModel SensorToTest = SCAN_SENSOR_SIMULATOR;
+//SensorModel SensorToTest = C3X;
+
+static const char* NFC3xSensor_HostIPAddress_Value   = "192.168.5.1"; // IPv4 address of the host as string value
+static const char* NFC3xSensor_SensorIPAddress_Value = "192.168.5.4"; // IPv4 address of the C3x sensor as string value
+
+
+// ************************************
+// User defined live callback functions
+// ************************************
+void startLive()
+{
+  printf("live start \n");
+}
+
+void dataLiveReady(TransferData_t *data)
+{
+  printf("dataLiveReady => NumberOfBuffers: %lld  NX: %lld  NY: %lld \n", data->NumberOfBuffers, data->NX, data->NY);
+}
+
+void doneLive()
+{
+  printf("live stop \n");
+  Sleep(200);
+}
+
+
+// *******************************************
+// User defined acquisition callback functions
+// *******************************************
+void startAcquire()
+{
+  printf("acquire start \n");
+}
+
+void dataAcquisitionReady(TransferData_t *data)
+{
+  printf("dataAcquisitionReady => NumberOfBuffers: %lld  NX: %lld  NY: %lld \n", data->NumberOfBuffers, data->NX, data->NY);
+}
+
+void doneAcquire()
+{
+  printf("acquire done \n");
+}
 
 
 
- 
+int main(int argc, char* argv[])
+{
+  int rc = 0;
+
+  printf("*************************************************************************************************** \n");
+  printf("sample1 : console example application for controlling NanoFocus AG scan sensors via the NFSensorAPI \n");
+  printf("*************************************************************************************************** \n\n");
+
+  // *************
+  // Create sensor
+  // *************
+  SensorHandle hSensor = 0;
+  rc = NFSensor_Create(SensorToTest, &hSensor);
+
+  // *****************
+  // Check return code
+  // *****************
+  if (rc != 0) return(-1);
+
+  // ****************************
+  // Get the current sensor model
+  // ****************************
+  SensorModel eSensorModel(SensorModel::UNDEFINED_SENSOR_MODEL);
+  rc = NFSensor_GetSensorModel(hSensor, &eSensorModel);
+  if (rc != 0) return(-1);
+
+  // ******************************
+  // Getting and setting parameters
+  // ******************************
+  ParamType parameter;
+
+  if (SensorModel::SCAN_SENSOR_SIMULATOR == eSensorModel) // Scan sensor simulator
+  {
+    rc = NFSensor_GetParameter(hSensor, NFScanSensorSimul_PixelSizeX, &parameter);
+    if (rc != 0) return(-1);
+
+    if (parameter.type == DataType::DOUBLE_TYPE)
+    {
+      printf("Pixel Size X: %.1f \n", parameter.data.d);
+    }
+
+    // Get light intensity
+    rc = NFSensor_GetParameter(hSensor, NFScanSensorSimul_LightIntensity, &parameter);
+    if (rc != 0) return(-1);
+
+    if (parameter.type == DataType::DOUBLE_TYPE)
+    {
+      printf("Light intensity: %.1f \n", parameter.data.d);
+    }
+
+    // Set new value for light intensity
+    const double dLightIntensity = 31.8;
+    rc = NFSensor_SetDoubleToParamType(dLightIntensity, &parameter);
+    if (rc != 0) return(-1);
+    rc = NFSensor_SetParameter(hSensor, NFScanSensorSimul_LightIntensity, parameter);
+    if (rc != 0) return(-1);
+
+    // Get new light intensity
+    rc = NFSensor_GetParameter(hSensor, NFScanSensorSimul_LightIntensity, &parameter);
+    if (rc != 0) return(-1);
+
+    if (parameter.type == DataType::DOUBLE_TYPE)
+    {
+      printf("New light intensity: %.1f \n", parameter.data.d);
+    }
+
+    // Get sensor description
+    rc = NFSensor_GetParameter(hSensor, NFScanSensorSimul_SensorDescription, &parameter);
+    if (rc != 0) return(-1);
+
+    if (parameter.type == DataType::STRING_TYPE)
+    {
+      printf("Sensor description: %s \n", parameter.data.v);
+    }
+
+    // Set new sensor description value
+    const char *strValue = "Another sensor description could be set here.";
+    rc = NFSensor_SetStringToParamType(strValue, &parameter);
+    if (rc != 0) return(-1);
+    rc = NFSensor_SetParameter(hSensor, NFScanSensorSimul_SensorDescription, parameter);
+    if (rc != 0) return(-1);
+
+    // Get new sensor description
+    rc = NFSensor_GetParameter(hSensor, NFScanSensorSimul_SensorDescription, &parameter);
+    if (rc != 0) return(-1);
+
+    if (parameter.type == DataType::STRING_TYPE)
+    {
+      printf("Sensor description: %s \n", parameter.data.v);
+    }
+
+    // Set the software trigger mode
+    parameter.data.i64 = TRIGGER_MODE_SOFTWARE;
+    NFSensor_SetParameter(hSensor, NFScanSensorSimul_TriggerMode, parameter);
+    if (rc != 0) return(-1);
+
+    // Try to get not available parameter
+    rc = NFSensor_GetParameter(hSensor, "abc", &parameter);
+    if (rc != 0)
+    {
+      const char *strLastError = NULL;
+      strLastError = NFSensor_GetLastDeviceError(hSensor);
+      printf("Last device error for sensor handle %u: %s \n", hSensor, strLastError);
+    }
+  }
+  else if (SensorModel::C3X == eSensorModel) // C3x sensor
+  {
+    rc = NFSensor_GetParameter(hSensor, NFC3xSensor_PixelSizeX, &parameter);
+    if (rc != 0) return(-1);
+
+    if (parameter.type == DataType::DOUBLE_TYPE)
+    {
+      printf("Pixel Size X: %.1f \n", parameter.data.d);
+    }
+
+    // Set parameter value for NFC3xSensor_HostIPAddress
+    rc = NFSensor_SetStringToParamType(NFC3xSensor_HostIPAddress_Value, &parameter);
+    if (rc != 0) return(-1);
+    rc = NFSensor_SetParameter(hSensor, NFC3xSensor_HostIPAddress, parameter);
+    if (rc != 0) return(-1);
+
+    // Set parameter value for NFC3xSensor_SensorIPAddress
+    rc = NFSensor_SetStringToParamType(NFC3xSensor_SensorIPAddress_Value, &parameter);
+    if (rc != 0) return(-1);
+    rc = NFSensor_SetParameter(hSensor, NFC3xSensor_SensorIPAddress, parameter);
+    if (rc != 0) return(-1);
+  }
+
+  // ***********************************************************
+  // Set the user defined live callback functions for the sensor
+  // ***********************************************************
+  rc = NFSensor_SetLiveStartCallback(hSensor, startLive);
+  if (rc != 0) return(-1);
+  rc = NFSensor_SetLiveDataReadyCallback(hSensor, dataLiveReady);
+  if (rc != 0) return(-1);
+  rc = NFSensor_SetLiveDoneCallback(hSensor, doneLive);
+  if (rc != 0) return(-1);
+
+  // ******************************************************************
+  // Set the user defined acquisition callback functions for the sensor
+  // ******************************************************************
+  rc = NFSensor_SetAcquisitionStartCallback(hSensor, startAcquire);
+  rc = NFSensor_SetAcquisitionDataReadyCallback(hSensor, dataAcquisitionReady);
+  rc = NFSensor_SetAcquisitionDoneCallback(hSensor, doneAcquire);
+
+  // *****************
+  // Connect to sensor
+  // *****************
+  rc = NFSensor_Connect(hSensor);
+  if (rc != 0) return(-1);
+
+  // *****************
+  // Initialize sensor
+  // *****************
+  rc = NFSensor_Init(hSensor);
+  if (rc != 0) return(-1);
+
+  // *********************************
+  // Start the live mode of the sensor
+  // *********************************
+  rc = NFSensor_StartLive(hSensor);
+  if (rc != 0) return(-1);
+
+  for (int i = 0; i < 20; i++)
+  {
+    Sleep(20);
+  }
+
+  // ********************************
+  // Stop the live mode of the sensor
+  // ********************************
+  rc = NFSensor_StopLive(hSensor);
+  if (rc != 0) return(-1);
+
+  // *************************************************
+  // Start the acquisition of 100 lines of the sensor
+  // *************************************************
+  rc = NFSensor_StartAcquisition(hSensor, 100);
+  if (rc != 0) return(-1);
+
+  StateID id(Unkown);
+  rc = NFSensor_GetStateID(hSensor, &id);
+  if (rc != 0) return(-1);
+
+  // Synchronize for IdleReady state
+  while (StateID::IdleReady != id)
+  {
+    Sleep(200);
+    rc = NFSensor_GetStateID(hSensor, &id);
+    if (rc != 0) return(-1);
+  }
+
+  // Give time to complete user callback functions before shutdown sensor
+  Sleep(1200);
+
+  // ****************
+  // Shut down sensor
+  // ****************
+  rc = NFSensor_ShutDown(hSensor);
+  if (rc != 0) return(-1);
+
+  // *****************
+  // Disconnect sensor
+  // *****************
+  rc = NFSensor_Disconnect(hSensor);
+  if (rc != 0) return(-1);
+
+  // **************
+  // Destroy sensor
+  // **************
+  rc = NFSensor_Destroy(hSensor);
+  if (rc != 0) return(-1);
+
+  return rc;
+}
+
+```
+
